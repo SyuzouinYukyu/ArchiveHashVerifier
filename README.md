@@ -1,126 +1,165 @@
-# ArchiveHashVerifier v1.0.5
+# ArchiveHashVerifier v1.1.2
 
-ArchiveHashVerifier は、Windows 11 x64 向けのハッシュ検証GUIツールです。  
-対象ファイル、ハッシュファイル、またはフォルダをドラッグ＆ドロップすることで、SHA-512 / SHA-256 / SHA3-512 / SHA3-256 のハッシュ一致確認を行えます。
+ArchiveHashVerifier は、Windows 11 x64 向けの **ハッシュ生成・検証 / OpenPGP Detached Signature 生成・検証 GUIツール**です。
 
-プログラムの透明性を確保するため、実行ファイルだけでなく、C# / .NET 8 / Windows Forms によるソースコード一式も公開しています。  
-利用者はソースコードを確認し、必要に応じて自身の環境でビルドして検証できます。
+SHA-512 / SHA-256 / SHA3-512 / SHA3-256 を扱い、GnuPG / Gpg4win が導入されている環境では OpenPGP の `.asc` / `.sig` も生成・検証できます。
 
-## ダウンロード
-
-最新版は GitHub Releases からダウンロードしてください。
-
-- `ArchiveHashVerifier_v1.0.5.exe`
-- `ArchiveHashVerifier_v1.0.5.exe.sha256`
-
-## 初回実行時の注意
-
-この実行ファイルは、個人公開の未署名EXEです。  
-初回実行時に Windows SmartScreen の警告が表示される場合があります。
-
-警告が表示された場合は、配布元、SHA-256、ソースコード内容を確認したうえで、利用者自身の判断で実行してください。  
-この表示は、コード署名証明書による署名が無い個人公開ソフトで一般的に発生し得るものであり、直ちにマルウェアであることを意味するものではありません。
-
-## SHA-256
-
-`ArchiveHashVerifier_v1.0.5.exe` の SHA-256 は以下です。
-
-```text
-061c09127109dd0305cd9d597be79136764d1159ee2d56dd6a8b3f516f80e578
-```
+- C# / Windows Forms
+- .NET 10
+- Windows 11 x64
+- Self-contained / Single-file
+- 管理者権限不要
+- 外部 NuGet パッケージ不要
 
 ## 主な機能
 
-- SHA-512 検証
-- SHA-256 検証
-- SHA3-512 検証
-- SHA3-256 検証
-- `.sha512` / `.sha256` / `.sha3-512` / `.sha3-256` 対応
-- `.sha3_512` / `.sha3_256` の表記ゆれ対応
-- 対象ファイル本体のドラッグ＆ドロップ対応
-- ハッシュファイルのドラッグ＆ドロップ対応
-- フォルダの再帰検証対応
-- 複数ファイル検証対応
-- 検証ログ表示
-- ログ保存対応
-- Windows 11 x64 向け単一EXE
+### 検証モード（起動時の既定）
+
+- SHA-512 / SHA-256 / SHA3-512 / SHA3-256
+- OpenPGP ASCII Detached Signature (`.asc`)
+- OpenPGP Binary Detached Signature (`.sig`)
+- 複数ファイル、フォルダー再帰、ドラッグ＆ドロップ
+- UNCパス / NAS上の大容量ファイル
+- OK / NG / ERROR / SKIP / CANCEL の結果表示
+
+検証時は以下の表記を認識します。
+
+```text
+.sha512 / .sha-512
+.sha256 / .sha-256
+.sha3-512 / .sha3_512
+.sha3-256 / .sha3_256
+.asc / .sig
+```
+
+### 生成モード
+
+以下を任意に同時生成できます。
+
+```text
+SHA-512   -> .sha512
+SHA-256   -> .sha256
+SHA3-512  -> .sha3-512
+SHA3-256  -> .sha3-256
+OpenPGP ASCII Detached Signature  -> .asc
+OpenPGP Binary Detached Signature -> .sig
+```
+
+ハッシュファイルは次の形式です。
+
+```text
+<ハッシュ値><半角スペース2個><元ファイル名>
+```
+
+複数のハッシュ方式を選択しても、元ファイルは可能な限り1回のストリーム読み込みで同時計算します。
+
+## OpenPGP / GPG
+
+`.asc` / `.sig` の生成・検証には **GnuPG / Gpg4win** が必要です。GPGが無い場合でもSHA-2 / SHA-3機能は利用できます。
+
+- 登録済みの署名可能な秘密鍵を専用ダイアログから選択
+- Fingerprintで署名鍵を明示
+- 失効・期限切れ・無効・署名不能な鍵は選択対象から除外
+- `REVKEYSIG` / `EXPKEYSIG` / `EXPSIG` / `BADSIG` 等を安全側に判定
+- 署名生成後の自動再検証をON/OFF可能（既定ON）
+- パスフレーズは保存せず、通常の gpg-agent / Pinentry を利用
+
+Gpg4win: https://gpg4win.org/download.html
+
+## 安全設計
+
+- 元ファイルを変更・移動・削除しない
+- 生成物は元ファイルと同じフォルダーへ作成
+- 既存生成物がある場合は上書きを確認
+- 一時ファイルへ生成し、成功後に正式成果物へ確定
+- キャンセル時は未完成一時ファイルを削除
+- 処理中に元ファイルが変更された場合は失敗扱い
+- フォルダー再帰時は既存ハッシュ / `.asc` / `.sig` / 一時ファイルを生成対象から除外
+- Junction / Symbolic Link 等のReparse Pointを再帰的に追跡しない
+- GPGの秘密鍵・パスフレーズを設定ファイルへ保存しない
+
+## UI
+
+- 検証 / 生成モード切替
+- Ctrl + マウスホイールでフォントサイズを1ptずつ変更（9～20pt）
+- DPI対応
+- D&D対応
+- 可動式Splitter
+- 処理速度・進捗・GPG処理フェーズ表示
+- 詳細な完了ダイアログ
+- 完了結果をクリップボードへコピー可能
+- ログファイルは自動生成しません
+
+## 設定ファイル
+
+初回実行後、EXEと同じフォルダーへ保存します。
+
+```text
+ArchiveHashVerifier.settings.json
+```
+
+フォントサイズ、ウィンドウ状態、生成方式、最終使用フォルダー、選択GPG Fingerprint等を保存します。秘密鍵やパスフレーズは保存しません。
 
 ## 動作環境
 
 - Windows 11 x64
-- .NET 8 self-contained build
-- 外部インストール不要
-- 管理者権限不要
-- 外部通信不要
-- 外部 NuGet パッケージ不要
+- GPGを使わない場合: 外部ランタイム不要（Self-contained）
+- OpenPGP機能を使う場合: GnuPG / Gpg4win
 
-## 使い方
+## v1.1.2 Release EXE / SHA-256
 
-1. GitHub Releases から `ArchiveHashVerifier_v1.0.5.exe` をダウンロードします。
-2. 必要に応じて `ArchiveHashVerifier_v1.0.5.exe.sha256` でEXEのハッシュを確認します。
-3. アプリを起動します。
-4. 検証したいファイル、ハッシュファイル、またはフォルダを画面へドラッグ＆ドロップします。
-5. 検証結果の OK / NG / ERROR とログを確認します。
-
-## 対応例
-
-- `sample.zip` + `sample.zip.sha512`
-- `sample.zip` + `sample.zip.sha256`
-- `sample.zip` + `sample.zip.sha3-512`
-- `sample.zip` + `sample.zip.sha3-256`
-- `sample.mkv` + `sample.mkv.sha512`
-- `sample.flac` + `sample.flac.sha3-256`
-
-## OK / NG / ERROR の意味
-
-- OK: 期待ハッシュと実測ハッシュが一致
-- NG: 期待ハッシュと実測ハッシュが不一致
-- ERROR: 対応ファイルが見つからない、ハッシュ値を読めない、読み取りエラーが発生した等
-
-## ソースコード
-
-主要なソースコードは以下にあります。
+`ArchiveHashVerifier_v1.1.2.exe` のSHA-256:
 
 ```text
-ArchiveHashVerifier_GUI/
+B9467C72FD694AA1D67282DBFE918B2A2F4F85853E8786253A30B51E0A2002E1
 ```
 
-主な構成は以下です。
+ReleaseからEXEを取得した場合は、上記SHA-256との一致を確認してください。
+
+このEXEは個人公開のコード署名未署名EXEです。Windows SmartScreenが警告を表示する場合があります。配布元、SHA-256、公開ソースコードを確認したうえで利用してください。
+
+## 最新ソース
+
+v1.1.2のソースは次にあります。
 
 ```text
-ArchiveHashVerifier_GUI.sln
-ArchiveHashVerifier_GUI/ArchiveHashVerifier_GUI.csproj
-ArchiveHashVerifier_GUI/MainForm.cs
-ArchiveHashVerifier_GUI/Program.cs
-ArchiveHashVerifier_GUI/app.ico
-ArchiveHashVerifier_GUI/app_icon.svg
-ArchiveHashVerifier_GUI/CHANGELOG.md
-ArchiveHashVerifier_GUI/README.md
+ArchiveHashVerifier_v1.1.2/
+  ArchiveHashVerifier.sln
+  ArchiveHashVerifier/
+    ArchiveHashVerifier.csproj
+    Dialogs.cs
+    FileDiscovery.cs
+    GpgService.cs
+    HashService.cs
+    MainForm.cs
+    Models.cs
+    ProcessingCoordinator.cs
+    Program.cs
+    SettingsService.cs
+    app.ico
 ```
 
-## ビルド方法
+`bin/`、`obj/`、`publish/` 等のビルド成果物はソースディレクトリへ含めていません。
 
-Windows 11 x64 と .NET 8 SDK が入っている環境で、以下を実行します。
+旧v1.0.5の公開ソース・EXEもリポジトリ上に保持しています。
+
+## ビルド
+
+.NET 10 SDKを導入したWindows 11 x64環境で実行します。
 
 ```powershell
-cd "ArchiveHashVerifier_GUI"
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+cd .\ArchiveHashVerifier_v1.1.2
+dotnet build .\ArchiveHashVerifier.sln -c Release
 ```
 
-生成されるEXE名はプロジェクト設定により `ArchiveHashVerifier_v1.0.5.exe` です。
+単一EXE発行:
 
-## 安全性について
+```powershell
+dotnet publish .\ArchiveHashVerifier\ArchiveHashVerifier.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+```
 
-このツールは検証対象ファイルとハッシュファイルを読み取るだけで、削除・移動・変更は行いません。  
-また、外部通信は行わず、ハッシュ計算は .NET 8 標準の暗号 API を使用します。
-
-プログラムの透明性を確保するため、実行ファイルだけでなくソースコードも公開しています。  
-そのため、実行ファイルをそのまま使用するだけでなく、ソースコードを確認し、自身の環境でビルドして動作を検証することもできます。
+v1.1.2開発時は62件の自動テストがすべて成功しています。
 
 ## 注意
 
-このツールはファイルのハッシュ値一致を確認するためのものです。  
-一致した場合、その検証範囲ではファイル破損・ダウンロード不完全・改ざんの形跡が認められないことを示します。
-
-ただし、配布元そのものの安全性、ファイル内容の合法性、実行時の完全な安全性を保証するものではありません。  
-入手元が信頼できるかどうかは、利用者自身でも確認してください。
+ハッシュ一致は、比較対象となる期待ハッシュと実ファイル内容が一致することを示します。OpenPGP署名検証は、署名鍵と署名データに基づく真正性・完全性確認を補助します。いずれも配布元やファイル内容そのものの安全性・合法性を保証するものではありません。

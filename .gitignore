@@ -11,7 +11,9 @@ artifacts/
 *.userosscache
 *.sln.docstates
 
-# Logs / temporary files
+# Runtime settings / temporary files
+ArchiveHashVerifier.settings.json
+*.ahvtmp-*
 *.log
 *.tmp
 *.bak
