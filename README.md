@@ -137,11 +137,12 @@ ArchiveHashVerifier_v1.1.2/
     Program.cs
     SettingsService.cs
     app.ico
+  ArchiveHashVerifier.Tests.zip
 ```
 
-`bin/`、`obj/`、`publish/` 等のビルド成果物はソースディレクトリへ含めていません。
+`ArchiveHashVerifier.Tests.zip` には、v1.1.2開発時に使用した62件の自動テストソース（`ArchiveHashVerifier.Tests.csproj` / `Program.cs`）を収録しています。
 
-旧v1.0.5の公開ソース・EXEもリポジトリ上に保持しています。
+`bin/`、`obj/`、`publish/` 等のビルド成果物はソースディレクトリへ含めていません。旧v1.0.5の公開ソース・EXEもリポジトリ上に保持しています。
 
 ## ビルド
 
@@ -158,7 +159,15 @@ dotnet build .\ArchiveHashVerifier.sln -c Release
 dotnet publish .\ArchiveHashVerifier\ArchiveHashVerifier.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
 ```
 
-v1.1.2開発時は62件の自動テストがすべて成功しています。
+## テスト
+
+`ArchiveHashVerifier.Tests.zip` を `ArchiveHashVerifier_v1.1.2` 直下へ展開し、`ArchiveHashVerifier.Tests` フォルダーを作成した状態で実行します。
+
+```powershell
+dotnet run --project .\ArchiveHashVerifier.Tests\ArchiveHashVerifier.Tests.csproj -c Release
+```
+
+v1.1.2開発時は62件すべて成功しています。GPG統合試験は隔離した `GNUPGHOME` と使い捨て鍵を使用します。
 
 ## 注意
 
