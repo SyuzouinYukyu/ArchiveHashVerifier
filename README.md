@@ -143,15 +143,9 @@ ReleaseからEXEを取得した場合は、上記SHA-256との一致を確認し
 
 ## 最新ソース
 
-v1.1.3の完全なソースコードと87件の実行型回帰テストは次のZIPに収録しています。
+v1.1.3の完全なソースコードと87件の実行型回帰テストは、GitHub ReleaseのAsset `ArchiveHashVerifier_v1.1.3_Source.zip` として公開します。
 
-```text
-ArchiveHashVerifier_v1.1.3/
-  ArchiveHashVerifier_v1.1.3_Source.zip
-  THIRD-PARTY-NOTICES.txt
-```
-
-Source ZIPには `ArchiveHashVerifier/` と `ArchiveHashVerifier.Tests/` を収録し、`bin/`、`obj/`、`publish/` 等のビルド成果物は含めていません。旧版の公開ソースもリポジトリ上に保持しています。
+Source ZIPには `ArchiveHashVerifier/` と `ArchiveHashVerifier.Tests/` を収録し、`bin/`、`obj/`、`publish/` 等のビルド成果物は含めません。リポジトリ内の `ArchiveHashVerifier_v1.1.3/THIRD-PARTY-NOTICES.txt` でも第三者ライセンスを確認できます。旧版の公開ソースも保持しています。
 
 ## ビルド
 
