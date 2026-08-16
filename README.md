@@ -1,21 +1,22 @@
-# ArchiveHashVerifier v1.1.2
+# ArchiveHashVerifier v1.1.3
 
 ArchiveHashVerifier は、Windows 11 x64 向けの **ハッシュ生成・検証 / OpenPGP Detached Signature 生成・検証 GUIツール**です。
 
-SHA-512 / SHA-256 / SHA3-512 / SHA3-256 を扱い、GnuPG / Gpg4win が導入されている環境では OpenPGP の `.asc` / `.sig` も生成・検証できます。
+SHA-512 / SHA-256 / SHA3-512 / SHA3-256 / **BLAKE3** を扱い、GnuPG / Gpg4win が導入されている環境では OpenPGP の `.asc` / `.sig` も生成・検証できます。
 
 - C# / Windows Forms
 - .NET 10
 - Windows 11 x64
 - Self-contained / Single-file
 - 管理者権限不要
-- 外部 NuGet パッケージ不要
+- 実行時の外部DLL不要
+- BLAKE3: `Blake3` NuGet 3.0.2（完全マネージド版）
 
 ## 主な機能
 
 ### 検証モード（起動時の既定）
 
-- SHA-512 / SHA-256 / SHA3-512 / SHA3-256
+- SHA-512 / SHA-256 / SHA3-512 / SHA3-256 / BLAKE3
 - OpenPGP ASCII Detached Signature (`.asc`)
 - OpenPGP Binary Detached Signature (`.sig`)
 - 複数ファイル、フォルダー再帰、ドラッグ＆ドロップ
@@ -29,6 +30,7 @@ SHA-512 / SHA-256 / SHA3-512 / SHA3-256 を扱い、GnuPG / Gpg4win が導入さ
 .sha256 / .sha-256
 .sha3-512 / .sha3_512
 .sha3-256 / .sha3_256
+.blake3
 .asc / .sig
 ```
 
@@ -41,21 +43,38 @@ SHA-512   -> .sha512
 SHA-256   -> .sha256
 SHA3-512  -> .sha3-512
 SHA3-256  -> .sha3-256
+BLAKE3    -> .blake3
 OpenPGP ASCII Detached Signature  -> .asc
 OpenPGP Binary Detached Signature -> .sig
 ```
 
-ハッシュファイルは次の形式です。
+初期設定では **SHA-512 / BLAKE3 / OpenPGP ASCII (.asc)** がONです。
+
+BLAKE3は標準256bit（32 bytes / 64桁hex）の通常Hashモードを使用します。ハッシュファイルは次の形式です。
 
 ```text
 <ハッシュ値><半角スペース2個><元ファイル名>
 ```
 
-複数のハッシュ方式を選択しても、元ファイルは可能な限り1回のストリーム読み込みで同時計算します。
+複数のハッシュ方式を選択しても、元ファイルは1回のストリーム読み込みで同時計算します。
+
+### BLAKE3
+
+BLAKE3実装には `Blake3` NuGet 3.0.2 の完全マネージド版を使用しています。
+
+- 標準256bit BLAKE3
+- `.blake3` 生成・検証
+- CPU機能を実行時に自動判定
+- SIMD最適化をライブラリ側で利用
+- `Hasher.UpdateWithJoin` による正式な並列処理を利用
+- アプリ独自のファイル分割・独自ツリー結合・複数ファイル同時並列化は行わない
+- SHA系と同じ1MiB・1パスのストリーミングI/Oを維持
+
+第三者ライセンスは `ArchiveHashVerifier_v1.1.3/THIRD-PARTY-NOTICES.txt` を参照してください。
 
 ## OpenPGP / GPG
 
-`.asc` / `.sig` の生成・検証には **GnuPG / Gpg4win** が必要です。GPGが無い場合でもSHA-2 / SHA-3機能は利用できます。
+`.asc` / `.sig` の生成・検証には **GnuPG / Gpg4win** が必要です。GPGが無い場合でもSHA-2 / SHA-3 / BLAKE3機能は利用できます。
 
 - 登録済みの署名可能な秘密鍵を専用ダイアログから選択
 - Fingerprintで署名鍵を明示
@@ -74,7 +93,7 @@ Gpg4win: https://gpg4win.org/download.html
 - 一時ファイルへ生成し、成功後に正式成果物へ確定
 - キャンセル時は未完成一時ファイルを削除
 - 処理中に元ファイルが変更された場合は失敗扱い
-- フォルダー再帰時は既存ハッシュ / `.asc` / `.sig` / 一時ファイルを生成対象から除外
+- フォルダー再帰時は既存ハッシュ / `.blake3` / `.asc` / `.sig` / 一時ファイルを生成対象から除外
 - Junction / Symbolic Link 等のReparse Pointを再帰的に追跡しない
 - GPGの秘密鍵・パスフレーズを設定ファイルへ保存しない
 
@@ -100,19 +119,23 @@ ArchiveHashVerifier.settings.json
 
 フォントサイズ、ウィンドウ状態、生成方式、最終使用フォルダー、選択GPG Fingerprint等を保存します。秘密鍵やパスフレーズは保存しません。
 
+v1.1.2形式の設定JSONにBLAKE3項目が存在しない場合は、BLAKE3を既定ONとして読み込みます。
+
 ## 動作環境
 
 - Windows 11 x64
 - GPGを使わない場合: 外部ランタイム不要（Self-contained）
 - OpenPGP機能を使う場合: GnuPG / Gpg4win
 
-## v1.1.2 Release EXE / SHA-256
+## v1.1.3 Release EXE / SHA-256
 
-`ArchiveHashVerifier_v1.1.2.exe` のSHA-256:
+`ArchiveHashVerifier_v1.1.3.exe` のSHA-256:
 
 ```text
-B9467C72FD694AA1D67282DBFE918B2A2F4F85853E8786253A30B51E0A2002E1
+64D897CC16C48371414D2E41FFF09BDC0F8499AEBB0C762CF5EC4435B8976255
 ```
+
+EXEサイズ: `52,075,335 bytes`
 
 ReleaseからEXEを取得した場合は、上記SHA-256との一致を確認してください。
 
@@ -120,37 +143,23 @@ ReleaseからEXEを取得した場合は、上記SHA-256との一致を確認し
 
 ## 最新ソース
 
-v1.1.2のソースは次にあります。
+v1.1.3の完全なソースコードと87件の実行型回帰テストは次のZIPに収録しています。
 
 ```text
-ArchiveHashVerifier_v1.1.2/
-  ArchiveHashVerifier.sln
-  ArchiveHashVerifier/
-    ArchiveHashVerifier.csproj
-    Dialogs.cs
-    FileDiscovery.cs
-    GpgService.cs
-    HashService.cs
-    MainForm.cs
-    Models.cs
-    ProcessingCoordinator.cs
-    Program.cs
-    SettingsService.cs
-    app.ico
-  ArchiveHashVerifier.Tests.zip
+ArchiveHashVerifier_v1.1.3/
+  ArchiveHashVerifier_v1.1.3_Source.zip
+  THIRD-PARTY-NOTICES.txt
 ```
 
-`ArchiveHashVerifier.Tests.zip` には、v1.1.2開発時に使用した62件の自動テストソース（`ArchiveHashVerifier.Tests.csproj` / `Program.cs`）を収録しています。
-
-`bin/`、`obj/`、`publish/` 等のビルド成果物はソースディレクトリへ含めていません。旧v1.0.5の公開ソース・EXEもリポジトリ上に保持しています。
+Source ZIPには `ArchiveHashVerifier/` と `ArchiveHashVerifier.Tests/` を収録し、`bin/`、`obj/`、`publish/` 等のビルド成果物は含めていません。旧版の公開ソースもリポジトリ上に保持しています。
 
 ## ビルド
 
-.NET 10 SDKを導入したWindows 11 x64環境で実行します。
+.NET 10 SDKを導入したWindows 11 x64環境でSource ZIPを展開後に実行します。
 
 ```powershell
-cd .\ArchiveHashVerifier_v1.1.2
-dotnet build .\ArchiveHashVerifier.sln -c Release
+cd .\ArchiveHashVerifier_v1.1.3
+dotnet build .\ArchiveHashVerifier\ArchiveHashVerifier.csproj -c Release
 ```
 
 単一EXE発行:
@@ -159,15 +168,15 @@ dotnet build .\ArchiveHashVerifier.sln -c Release
 dotnet publish .\ArchiveHashVerifier\ArchiveHashVerifier.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
 ```
 
-## テスト
+Publish時はEXEと第三者ライセンス通知 `THIRD-PARTY-NOTICES.txt` が出力されます。EXE本体は単体で動作し、外部ランタイムDLLを必要としません。
 
-`ArchiveHashVerifier.Tests.zip` を `ArchiveHashVerifier_v1.1.2` 直下へ展開し、`ArchiveHashVerifier.Tests` フォルダーを作成した状態で実行します。
+## テスト
 
 ```powershell
 dotnet run --project .\ArchiveHashVerifier.Tests\ArchiveHashVerifier.Tests.csproj -c Release
 ```
 
-v1.1.2開発時は62件すべて成功しています。GPG統合試験は隔離した `GNUPGHOME` と使い捨て鍵を使用します。
+v1.1.3開発時は **実行型回帰テスト87/87件成功**。BLAKE3公式test vectorsの 0 / 1 / 1023 / 1024 / 1025 bytes、通常Update / `UpdateWithJoin` / XOF先頭32 bytesを検証しています。GPG統合試験は隔離した `GNUPGHOME` と使い捨て鍵を使用します。
 
 ## 注意
 
