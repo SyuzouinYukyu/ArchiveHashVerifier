@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v1.1.4
+
+- 複数ファイルのHashを方式ごとの固定ファイルへまとめる一括出力を追加（既定ON）
+- 一括Hash: `ArchiveHashVerifier.sha512` / `.sha256` / `.sha3-512` / `.sha3-256` / `.blake3`
+- 一括OpenPGP用の決定的JSON `ArchiveHashVerifier.manifest` と `.manifest.asc` / `.manifest.sig` に対応
+- 一括manifestはSHA-512を必須収録し、選択Hashを同一1パスで計算
+- 固定一括Hashの直接D&D、元ファイルD&Dからの該当entry自動検証、複数固定Hash同時D&Dに対応
+- manifest / signatureを固定byte列で検証し、処理途中の差替えを検知するTOCTOU対策を追加
+- NO_PUBKEY時は全署名結果を集約し、hard failureが無い場合のみ1回確認してHash-only継続を選択可能
+- 一括生成のbackup → commit → cleanup transactionを実装。commit完了後のcleanup失敗では新版をrollbackしない
+- `My  Video.mkv` 等、filename内に連続半角スペースを含む正当な一括Hash行を検証可能に修正
+- manifest serializationを`Utf8JsonWriter`で明示順序化し、UTF-8 BOMなし / CRLF / 決定的出力を保証
+- 「方式ごとに1ファイルへまとめて出力する」チェックをモード選択の右側へ移動し、生成モード時のみ有効化
+- 回帰試験を98件へ拡充。正式Release時 98 passed / 0 failed、Release build 0 warning / 0 error
+
 ## v1.1.3
 
 - BLAKE3（標準256bit）の生成・検証に対応
