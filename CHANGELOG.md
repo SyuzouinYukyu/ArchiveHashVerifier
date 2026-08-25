@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## v1.1.6
+
+- checksumファイルを `StrictChecksumList` / `MalformedStrictChecksumList` / `LegacySidecar` 相当の3状態で分類するよう安全化
+- strict形式を意図した破損・混在checksum-listをlegacy parserへfallbackさせずERRORとして拒否
+- strict/legacy判定を先頭行だけでなく全非空行へ拡張し、I/O異常もlegacy扱いへ降格しない
+- `BatchCancellationBeforeCommit` 回帰試験の誤った対象名を `a.bin.sha512` へ修正し、temp/backup不存在と元ファイル不変も確認
+- GPG署名生成後の自動検証OFF時でも、秘密鍵metadataから実際のUser IDを取得して完了画面へ表示
+- User ID取得のために `gpg --verify` は実行せず、`CreatedUnverified` / 「自動検証未実施」の意味を維持
+- 隔離したGNUPGHOMEと使い捨て鍵を用いた自動検証OFFのUID保持回帰試験を追加
+- 回帰試験を102件へ拡充。正式Release時 102 passed / 0 failed、Release build 0 warning / 0 error
+
+## v1.1.5
+
+- Batch ONで単体ファイルを処理する場合、元ファイル名を拡張子込みの基底名として成果物を生成するよう変更（例: `ClariS.zip.sha512`）
+- 同名で拡張子だけ異なる `ClariS.zip` / `ClariS.7z` 等の成果物衝突を回避
+- Batch ONで複数ファイルを処理する場合、Windows標準SaveFileDialogを1回表示し、任意の共通basenameを指定可能に変更
+- SaveFileDialogの初期フォルダーを対象ファイルの共通parentへ設定し、成果物は対象ファイルと同一フォルダーへ限定
+- SaveFileDialog Cancel時はHash/GPG/上書き/temp/backup等を開始せず無変更で終了
+- 任意basenameの `.sha512` / `.sha256` / `.sha3-*` / `.blake3` checksum-listを直接D&Dして検証可能に拡張
+- 元ファイルD&D時も同一フォルダー内の任意basename checksum-listからmatching entryを検出可能に拡張
+- 任意basenameの `.manifest` / `.manifest.asc` / `.manifest.sig` を正式対応
+- v1.1.4の `ArchiveHashVerifier.*` 固定名を後方互換として維持
+- 完了ダイアログ表示直後の結果本文全選択を解消し、OKボタンへ初期focusするようUIを改善
+- 回帰試験100件、Release build 0 warning / 0 error
+
 ## v1.1.4
 
 - 複数ファイルのHashを方式ごとの固定ファイルへまとめる一括出力を追加（既定ON）
