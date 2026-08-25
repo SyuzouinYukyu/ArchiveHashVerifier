@@ -242,26 +242,22 @@ ArchiveHashVerifier_v1.1.6/ArchiveHashVerifier/THIRD-PARTY-NOTICES.txt
 
 ## 🧑‍💻 最新ソース
 
-v1.1.6のソースコードと実行型回帰テストは、正式Source ZIPとして公開しています。
+v1.1.6のソースコードと実行型回帰テストは次のディレクトリに公開します。
 
 ```text
-ArchiveHashVerifier_v1.1.6_Source.zip
+ArchiveHashVerifier_v1.1.6/
+├─ ArchiveHashVerifier/
+└─ ArchiveHashVerifier.Tests/
 ```
 
-ZIP内:
-
-```text
-ArchiveHashVerifier/
-ArchiveHashVerifier.Tests/
-```
-
-`bin/`、`obj/`、`publish/` 等のビルド成果物は含めていません。旧版ソースも保持しています。
+`bin/`、`obj/`、`publish/` 等のビルド成果物はリポジトリ用ソースへ含めません。旧版ソースも保持します。
 
 ## 🔨 ビルド
 
 .NET 10 SDKを導入したWindows 11 x64環境で実行します。
 
 ```powershell
+cd .\ArchiveHashVerifier_v1.1.6
 dotnet build .\ArchiveHashVerifier\ArchiveHashVerifier.csproj -c Release
 ```
 
