@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v1.1.7
+
+- 保存済みGPG署名鍵のFingerprintから、次回起動時に対応する実際のUser IDをGnuPG秘密鍵metadataより非同期復元して表示
+- User ID自体は設定JSONへ保存せず、現在の鍵metadataを表示する方式を維持
+- 起動時のUser ID復元では `gpg --verify` を実行せず、署名自動検証ON/OFFの意味を変更しない
+- metadata取得中に別の署名鍵を選択した場合、古い非同期結果が新しい選択を上書きしないrace guardを追加
+- FormClosing時に保存鍵metadata取得をキャンセルし、終了後のUI反映を防止
+- GPG利用不可時はFingerprintを保持して「保存済み（GPG利用不可）」、保存鍵が見つからない場合は「保存済み（現在利用不可）」を表示
+- 保存済みGPG鍵metadata復元・race/cancel・起動時 `--verify` 非実行の回帰試験を追加
+- 回帰試験を105件へ拡充。正式Release時 105 passed / 0 failed、Release build 0 warning / 0 error
+
 ## v1.1.6
 
 - checksumファイルを `StrictChecksumList` / `MalformedStrictChecksumList` / `LegacySidecar` 相当の3状態で分類するよう安全化

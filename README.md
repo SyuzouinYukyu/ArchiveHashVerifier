@@ -1,4 +1,4 @@
-# 🧪 ArchiveHashVerifier v1.1.6
+# 🧪 ArchiveHashVerifier v1.1.7
 
 ArchiveHashVerifier は、Windows 11 x64 向けの **ハッシュ生成・検証 / OpenPGP Detached Signature 生成・検証 GUIツール**です。
 
@@ -134,6 +134,16 @@ MyArchive.manifest.sig
 
 GPG署名生成後の自動検証をOFFにした場合でも、v1.1.6では選択された秘密鍵のmetadataから実際のUser IDを取得して完了画面へ表示します。このために `gpg --verify` を実行することはありません。
 
+### 🔑 保存済みGPG署名鍵の起動時復元（v1.1.7）
+
+v1.1.7では、前回選択したGPG署名鍵のFingerprintが設定に保存されている場合、MainForm表示後にGnuPGの秘密鍵metadataを非同期取得し、対応する実際のUser IDを自動復元して表示します。
+
+- User ID自体は設定ファイルへ保存せず、起動時に現在のGPG鍵metadataから取得
+- 起動時のUID復元では `gpg --verify` を実行しない
+- metadata取得中に別鍵を選択した場合、古い結果で新しい選択を上書きしない
+- フォーム終了時は取得処理をキャンセル
+- GPG利用不可時や保存鍵が見つからない場合もFingerprintを保持し、安全な状態表示へ切替
+
 ## 🛡️ checksum-list安全性（v1.1.6）
 
 checksumファイルは、strict checksum-list / malformed strict / legacy sidecarを区別して処理します。
@@ -215,49 +225,48 @@ ArchiveHashVerifier.settings.json
 - GPGを使わない場合: 外部.NET Runtime不要（Self-contained）
 - OpenPGP機能を使う場合: GnuPG / Gpg4win
 
-## 📦 v1.1.6 Release EXE / SHA-256
+## 📦 v1.1.7 Release EXE / SHA-256
 
-`ArchiveHashVerifier_v1.1.6.exe`
+`ArchiveHashVerifier_v1.1.7.exe`
 
 ```text
-SHA-256: 7B16B19CBD6AD095B8376A3ED944B853FC867492A507AECDADC863F9570835BE
-Size:    52,094,475 bytes
+SHA-256: DFA763661D208B4D3EE39DCD9F01AF06785A32FA89CF5F3BBC4D1A4E9C34F792
+Size:    52,160,900 bytes
 ```
 
 SHA-256確認用ファイル:
 
 ```text
-ArchiveHashVerifier_v1.1.6.exe.sha256
+ArchiveHashVerifier_v1.1.7.exe.sha256
 ```
 
 本EXEは個人公開のコード署名未署名EXEです。Windows SmartScreen等が警告を表示する場合があります。配布元・公開ソース・SHA-256を確認して利用してください。
 
 ## 📜 第三者ライセンス
 
-`Blake3` 3.0.2（BSD-2-Clause）の通知:
+`Blake3` 3.0.2（BSD-2-Clause）の通知はRelease Asset `THIRD-PARTY-NOTICES.txt` に収録しています。Source ZIP内では次の場所です。
 
 ```text
-ArchiveHashVerifier_v1.1.6/ArchiveHashVerifier/THIRD-PARTY-NOTICES.txt
+ArchiveHashVerifier/THIRD-PARTY-NOTICES.txt
 ```
 
 ## 🧑‍💻 最新ソース
 
-v1.1.6のソースコードと実行型回帰テストは次のディレクトリに公開します。
+v1.1.7の完全なクリーンソースと実行型回帰テストは、GitHub Release Assetの次のファイルで公開します。
 
 ```text
-ArchiveHashVerifier_v1.1.6/
+ArchiveHashVerifier_v1.1.7_Source.zip
 ├─ ArchiveHashVerifier/
 └─ ArchiveHashVerifier.Tests/
 ```
 
-`bin/`、`obj/`、`publish/` 等のビルド成果物はリポジトリ用ソースへ含めません。旧版ソースも保持します。
+`bin/`、`obj/`、`publish/` 等のビルド成果物はSource ZIPへ含めません。リポジトリにはv1.1.6の閲覧可能な完全ソースを保持し、v1.1.7との差分は `ArchiveHashVerifier_v1.1.7_vs_v1.1.6.patch` として併記します。
 
 ## 🔨 ビルド
 
-.NET 10 SDKを導入したWindows 11 x64環境で実行します。
+.NET 10 SDKを導入したWindows 11 x64環境で、`ArchiveHashVerifier_v1.1.7_Source.zip` を展開したディレクトリから実行します。
 
 ```powershell
-cd .\ArchiveHashVerifier_v1.1.6
 dotnet build .\ArchiveHashVerifier\ArchiveHashVerifier.csproj -c Release
 ```
 
@@ -273,9 +282,9 @@ dotnet publish .\ArchiveHashVerifier\ArchiveHashVerifier.csproj -c Release -r wi
 dotnet run --project .\ArchiveHashVerifier.Tests\ArchiveHashVerifier.Tests.csproj -c Release
 ```
 
-v1.1.6正式Release時は **102 passed / 0 failed**、Release buildは **0 warning / 0 error**。
+v1.1.7正式Release時は **105 passed / 0 failed**、Release buildは **0 warning / 0 error**。
 
-BLAKE3公式test vectors、一括Hash、任意basename、transaction rollback/cleanup、manifest/OpenPGP、NO_PUBKEY、BADSIG、strict/legacy分類、GPG自動検証OFF時のUID保持等を含む回帰試験を実施しています。GPG統合試験には隔離した `GNUPGHOME` と使い捨て鍵を使用します。
+BLAKE3公式test vectors、一括Hash、任意basename、transaction rollback/cleanup、manifest/OpenPGP、NO_PUBKEY、BADSIG、strict/legacy分類、GPG自動検証OFF時のUID保持、保存済みGPG鍵の起動時UID復元・race/cancel安全性等を含む回帰試験を実施しています。GPG統合試験には隔離した `GNUPGHOME` と使い捨て鍵を使用します。
 
 DPI全倍率および実利用鍵でのGUI目視については、自動試験とは別に利用環境での確認を推奨します。
 

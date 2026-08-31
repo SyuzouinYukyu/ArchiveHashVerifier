@@ -1,0 +1,258 @@
+diff --git a/ArchiveHashVerifier/ArchiveHashVerifier.csproj b/ArchiveHashVerifier/ArchiveHashVerifier.csproj
+index 95fa0b2..873abd0 100644
+--- a/ArchiveHashVerifier/ArchiveHashVerifier.csproj
++++ b/ArchiveHashVerifier/ArchiveHashVerifier.csproj
+@@ -6,12 +6,12 @@
+     <Nullable>enable</Nullable>
+     <ImplicitUsings>enable</ImplicitUsings>
+     <ApplicationIcon>app.ico</ApplicationIcon>
+-    <AssemblyName>ArchiveHashVerifier_v1.1.6</AssemblyName>
++    <AssemblyName>ArchiveHashVerifier_v1.1.7</AssemblyName>
+     <RootNamespace>ArchiveHashVerifier</RootNamespace>
+-    <Version>1.1.6</Version>
+-    <FileVersion>1.1.6.0</FileVersion>
+-    <AssemblyVersion>1.1.6.0</AssemblyVersion>
+-    <Product>ArchiveHashVerifier v1.1.6</Product>
++    <Version>1.1.7</Version>
++    <FileVersion>1.1.7.0</FileVersion>
++    <AssemblyVersion>1.1.7.0</AssemblyVersion>
++    <Product>ArchiveHashVerifier v1.1.7</Product>
+     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+     <SelfContained>true</SelfContained>
+     <PublishSingleFile>true</PublishSingleFile>
+diff --git a/ArchiveHashVerifier/MainForm.cs b/ArchiveHashVerifier/MainForm.cs
+index c949cf5..57f8f7d 100644
+--- a/ArchiveHashVerifier/MainForm.cs
++++ b/ArchiveHashVerifier/MainForm.cs
+@@ -4,7 +4,7 @@ namespace ArchiveHashVerifier;
+ 
+ public sealed class MainForm : Form
+ {
+-    private const string AppTitle = "ArchiveHashVerifier v1.1.6";
++    private const string AppTitle = "ArchiveHashVerifier v1.1.7";
+     private readonly SettingsService settingsService = new(AppContext.BaseDirectory);
+     private readonly AppSettings settings;
+     private readonly GpgService gpg = new();
+@@ -39,7 +39,8 @@ public sealed class MainForm : Form
+     private readonly Button exitButton = new() { Text = "終了", AutoSize = true };
+     private readonly OverwritePolicySession overwriteSession = new();
+     private readonly Stopwatch operationWatch = new();
+-    private readonly CloseGate closeGate = new();
++    private readonly CloseGate closeGate = new();
++    private readonly CancellationTokenSource savedKeyMetadataCts = new();
+     private CancellationTokenSource? operationCts;
+     private WheelMessageFilter? wheelFilter;
+     private bool running;
+@@ -172,15 +173,52 @@ public sealed class MainForm : Form
+         WindowState = settings.WindowState;
+     }
+ 
+-    private void MainForm_Shown(object? sender, EventArgs e)
++    private async void MainForm_Shown(object? sender, EventArgs e)
+     {
+         int max = Math.Max(split.Panel1MinSize, split.Height - split.Panel2MinSize - split.SplitterWidth);
+         split.SplitterDistance = Math.Clamp(settings.SplitterDistance, split.Panel1MinSize, max);
+         wheelFilter = new WheelMessageFilter(this);
+         Application.AddMessageFilter(wheelFilter);
+         TrySaveSettings(showWarning: true);
++        await RestoreSavedGpgKeyMetadataAsync();
+     }
+ 
++    private async Task RestoreSavedGpgKeyMetadataAsync()
++    {
++        string? expectedFingerprint = settings.GpgFingerprint;
++        if (expectedFingerprint is null) return;
++        if (!gpg.IsAvailable)
++        {
++            UpdateKeyLabel(savedState: "保存済み（GPG利用不可）");
++            return;
++        }
++
++        UpdateKeyLabel(savedState: "確認中...");
++        try
++        {
++            IReadOnlyList<GpgKey> keys = await gpg.ListUsableSecretKeysAsync(savedKeyMetadataCts.Token);
++            if (!CanApplySavedKeyMetadata(expectedFingerprint)) return;
++            GpgKey? key = FindSavedGpgKey(keys, expectedFingerprint);
++            UpdateKeyLabel(key?.UserId, key is null ? "保存済み（現在利用不可）" : null);
++        }
++        catch (OperationCanceledException) when (savedKeyMetadataCts.IsCancellationRequested) { }
++        catch (Exception ex)
++        {
++            Debug.WriteLine("GPG saved key metadata lookup failed: " + ex.Message);
++            if (CanApplySavedKeyMetadata(expectedFingerprint)) UpdateKeyLabel(savedState: "保存済み（現在利用不可）");
++        }
++    }
++
++    private bool CanApplySavedKeyMetadata(string expectedFingerprint) =>
++        !savedKeyMetadataCts.IsCancellationRequested && !IsDisposed && !Disposing && !closeGate.CloseRequested &&
++        string.Equals(settings.GpgFingerprint, expectedFingerprint, StringComparison.OrdinalIgnoreCase);
++
++    internal static GpgKey? FindSavedGpgKey(IEnumerable<GpgKey> keys, string fingerprint) =>
++        keys.FirstOrDefault(x => x.Fingerprint.Equals(fingerprint, StringComparison.OrdinalIgnoreCase) ||
++            x.SigningFingerprints.Any(x => x.Equals(fingerprint, StringComparison.OrdinalIgnoreCase)));
++
++    internal static string FormatSavedKeyLabel(string? fingerprint, string? uid = null, string? savedState = null) =>
++        fingerprint is null ? "署名鍵: 未選択" : $"署名鍵: {uid ?? savedState ?? "保存済み"} / {fingerprint}";
+     private void UpdateModeUi()
+     {
+         bool generate = generateRadio.Checked;
+@@ -214,10 +252,8 @@ public sealed class MainForm : Form
+         finally { UseWaitCursor = false; }
+     }
+ 
+-    private void UpdateKeyLabel(string? uid = null) => keyLabel.Text = settings.GpgFingerprint is null
+-        ? "署名鍵: 未選択"
+-        : $"署名鍵: {uid ?? "保存済み"} / {settings.GpgFingerprint}";
+-
++    private void UpdateKeyLabel(string? uid = null, string? savedState = null) =>
++        keyLabel.Text = FormatSavedKeyLabel(settings.GpgFingerprint, uid, savedState);
+     private void AddFilesButton_Click(object? sender, EventArgs e)
+     {
+         using var dialog = new OpenFileDialog { Title = "対象ファイルを選択", Multiselect = true, CheckFileExists = true,
+@@ -467,7 +503,8 @@ public sealed class MainForm : Form
+     }
+ 
+     private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
+-    {
++    {
++        savedKeyMetadataCts.Cancel();
+         if (!closeGate.CanClose(running))
+         {
+             e.Cancel = true;
+diff --git a/ArchiveHashVerifier/Program.cs b/ArchiveHashVerifier/Program.cs
+index 952a55a..a3628f8 100644
+--- a/ArchiveHashVerifier/Program.cs
++++ b/ArchiveHashVerifier/Program.cs
+@@ -12,7 +12,7 @@ internal static class Program
+             {
+                 using var form = new MainForm();
+                 _ = form.Handle;
+-                File.WriteAllText(args[1], "ArchiveHashVerifier v1.1.6 startup OK");
++                File.WriteAllText(args[1], "ArchiveHashVerifier v1.1.7 startup OK");
+                 return;
+             }
+             if (args.Length == 3 && args[0] == "--batch-probe")
+@@ -24,7 +24,7 @@ internal static class Program
+                 string baseName = Path.GetFileName(args[1]);
+                 OperationSummary verified = coordinator.VerifyAsync([Path.Combine(directory, baseName + ".sha512"), Path.Combine(directory, baseName + ".blake3")], null, null, CancellationToken.None).GetAwaiter().GetResult();
+                 if (generated.Ok != 2 || verified.Ok != 2) throw new InvalidOperationException("Batch probe failed.");
+-                File.WriteAllText(args[2], "ArchiveHashVerifier v1.1.6 batch generation and verification OK");
++                File.WriteAllText(args[2], "ArchiveHashVerifier v1.1.7 batch generation and verification OK");
+                 return;
+             }
+             if (args.Length == 3 && args[0] == "--blake3-probe")
+@@ -34,15 +34,15 @@ internal static class Program
+                 OperationSummary generated = coordinator.GenerateAsync([args[1]], options, null!, null, null, CancellationToken.None).GetAwaiter().GetResult();
+                 OperationSummary verified = coordinator.VerifyAsync([args[1]], null, null, CancellationToken.None).GetAwaiter().GetResult();
+                 if (generated.Ok != 1 || verified.Ok != 1) throw new InvalidOperationException("BLAKE3 probe failed.");
+-                File.WriteAllText(args[2], "ArchiveHashVerifier v1.1.6 BLAKE3 generation and verification OK");
++                File.WriteAllText(args[2], "ArchiveHashVerifier v1.1.7 BLAKE3 generation and verification OK");
+                 return;
+             }
+             Application.Run(new MainForm());
+         }
+         catch (Exception ex)
+         {
+-            MessageBox.Show("ArchiveHashVerifier v1.1.6 の起動中にエラーが発生しました。\r\n\r\n" + ex,
+-                "ArchiveHashVerifier v1.1.6 - 起動エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
++            MessageBox.Show("ArchiveHashVerifier v1.1.7 の起動中にエラーが発生しました。\r\n\r\n" + ex,
++                "ArchiveHashVerifier v1.1.7 - 起動エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+         }
+     }
+ }
+diff --git a/ArchiveHashVerifier.Tests/Program.cs b/ArchiveHashVerifier.Tests/Program.cs
+index db7741c..847e2c5 100644
+--- a/ArchiveHashVerifier.Tests/Program.cs
++++ b/ArchiveHashVerifier.Tests/Program.cs
+@@ -37,6 +37,8 @@ internal static class Program
+             ("v1.1.5 single and multiple batch names", V115TestCases.SingleAndMultipleBatchNames),
+             ("v1.1.5 output name cancel and arbitrary manifest", V115TestCases.OutputNameCancelAndArbitraryManifest),
+             ("Mixed strict checksum list never falls back to legacy", V116TestCases.MixedStrictLegacyMustNotFallback),
++("Saved GPG key metadata presentation and lookup", V117TestCases.SavedKeyMetadataPresentationAndLookup),
++            ("Saved GPG key metadata race and cancellation guard", SavedGpgKeyMetadataRaceAndCancellation),
+             ("BLAKE3 correct sidecar verifies", Blake3TestCases.CorrectVerification),
+             ("BLAKE3 modified source is NG", Blake3TestCases.ModifiedIsNg),
+             ("BLAKE3 uppercase hex verifies", Blake3TestCases.UppercaseHexVerifies),
+@@ -95,6 +97,7 @@ internal static class Program
+             ("GPG auto-verification defaults ON", AutoVerifyDefault),
+             ("GPG auto-verification setting round-trip", AutoVerifySettingRoundTrip),
+             ("GPG isolated disposable key setup", SetupGpgFixture),
++            ("Saved GPG key metadata lookup uses no verify", SavedGpgKeyMetadataLookup),
+             ("VALIDSIG plus REVKEYSIG is rejected", StatusRevoked),
+             ("VALIDSIG plus EXPKEYSIG is rejected", StatusExpiredKeySignature),
+             ("VALIDSIG plus EXPSIG is rejected", StatusExpiredSignature),
+@@ -435,6 +438,23 @@ internal static class Program
+         return Task.CompletedTask;
+     }
+ 
++    private static Task SavedGpgKeyMetadataRaceAndCancellation()
++    {
++        RunSta(() =>
++        {
++            using var form = new MainForm();
++            var settings = (AppSettings)GetField(form, "settings");
++            MethodInfo canApply = typeof(MainForm).GetMethod("CanApplySavedKeyMetadata", BindingFlags.Instance | BindingFlags.NonPublic)!;
++            const string original = "00112233445566778899AABBCCDDEEFF00112233";
++            settings.GpgFingerprint = original;
++            True((bool)canApply.Invoke(form, [original])!, "current fingerprint must accept its own metadata");
++            settings.GpgFingerprint = "FFEEDDCCBBAA99887766554433221100FFEEDDCC";
++            True(!(bool)canApply.Invoke(form, [original])!, "stale metadata must not replace a newly selected key");
++            ((CancellationTokenSource)GetField(form, "savedKeyMetadataCts")).Cancel();
++            True(!(bool)canApply.Invoke(form, [settings.GpgFingerprint])!, "cancelled metadata must not update the form");
++        });
++        return Task.CompletedTask;
++    }
+     private static async Task AutoVerifyDefault()
+     {
+         True(new AppSettings().AutoVerifyGeneratedSignatures, "settings default must be ON");
+@@ -640,6 +660,16 @@ internal static class Program
+         gpgKey = keys[0];
+     }
+ 
++    private static async Task SavedGpgKeyMetadataLookup()
++    {
++        EnsureGpgFixture();
++        int verifyCalls = 0;
++        var service = new GpgService(gpgPath, gpgHome, arguments => { if (arguments.Contains("--verify")) verifyCalls++; });
++        IReadOnlyList<GpgKey> keys = await service.ListUsableSecretKeysAsync(CancellationToken.None);
++        GpgKey? restored = MainForm.FindSavedGpgKey(keys, gpgKey!.Fingerprint);
++        Equal(gpgKey.UserId, restored?.UserId);
++        Equal(0, verifyCalls);
++    }
+     private static async Task GpgAscii()
+     {
+         EnsureGpgFixture();
+diff --git a/ArchiveHashVerifier.Tests/V117TestCases.cs b/ArchiveHashVerifier.Tests/V117TestCases.cs
+new file mode 100644
+index 0000000..f09b40a
+--- /dev/null
++++ b/ArchiveHashVerifier.Tests/V117TestCases.cs
+@@ -0,0 +1,26 @@
++using ArchiveHashVerifier;
++
++internal static class V117TestCases
++{
++    public static Task SavedKeyMetadataPresentationAndLookup()
++    {
++        const string primary = "00112233445566778899AABBCCDDEEFF00112233";
++        const string signing = "AABBCCDDEEFF00112233445566778899AABBCCDD";
++        var key = new GpgKey("ArchiveHashVerifier Test User <ahv-test@example.invalid>", "ArchiveHashVerifier Test User", "ahv-test@example.invalid",
++            "ed25519", null, primary, [signing]);
++
++        Equal("署名鍵: 未選択", MainForm.FormatSavedKeyLabel(null));
++        Equal(key.UserId, MainForm.FindSavedGpgKey([key], primary.ToLowerInvariant())?.UserId);
++        Equal(key.UserId, MainForm.FindSavedGpgKey([key], signing.ToLowerInvariant())?.UserId);
++        Equal(null, MainForm.FindSavedGpgKey([key], "FFEEDDCCBBAA99887766554433221100FFEEDDCC"));
++        Equal($"署名鍵: {key.UserId} / {primary}", MainForm.FormatSavedKeyLabel(primary, key.UserId));
++        Equal($"署名鍵: 保存済み（GPG利用不可） / {primary}", MainForm.FormatSavedKeyLabel(primary, savedState: "保存済み（GPG利用不可）"));
++        Equal($"署名鍵: 保存済み（現在利用不可） / {primary}", MainForm.FormatSavedKeyLabel(primary, savedState: "保存済み（現在利用不可）"));
++        return Task.CompletedTask;
++    }
++
++    private static void Equal<T>(T expected, T actual)
++    {
++        if (!EqualityComparer<T>.Default.Equals(expected, actual)) throw new InvalidOperationException($"Expected {expected}; actual {actual}");
++    }
++}
+\ No newline at end of file
